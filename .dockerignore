@@ -1,0 +1,29 @@
+# Dependencies and build output are produced inside the image.
+node_modules
+dist
+
+# VCS, secrets and local env files (never bake secrets into an image).
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+
+# Tests and dev-only tooling.
+tests
+coverage
+vitest.config.ts
+drizzle.config.ts
+
+# Logs and editor/OS noise.
+logs
+*.log
+npm-debug.log*
+.vscode
+.idea
+.DS_Store
+
+# Container definitions themselves.
+Dockerfile
+.dockerignore
+docker-compose*.yml

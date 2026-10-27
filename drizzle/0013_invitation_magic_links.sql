@@ -1,0 +1,1 @@
+ALTER TABLE "campaign_invitations" ADD COLUMN "magic_token_hash" varchar(64);

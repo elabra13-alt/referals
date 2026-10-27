@@ -33,7 +33,7 @@ const RfcInput = z
     }
   });
 
-const PayoutProfileSchema = z
+export const PayoutProfileSchema = z
   .object({
     clabe: ClabeInput,
     /** Account holder's full legal name, exactly as registered at the bank. */

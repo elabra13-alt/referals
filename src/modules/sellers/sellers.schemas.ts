@@ -18,6 +18,14 @@ const CheckoutUrl = z
   .pipe(z.url())
   .refine((v) => new URL(v).protocol === 'https:', 'checkout_base_url must use https');
 
+/** Product photo: https only (pages load it under `img-src https:`); null clears it. */
+const ImageUrl = z
+  .string()
+  .trim()
+  .max(2048)
+  .pipe(z.url())
+  .refine((v) => new URL(v).protocol === 'https:', 'image_url must use https');
+
 const Category = z.string().trim().toLowerCase().min(1).max(50);
 const Currency = z.string().regex(/^[A-Z]{3}$/, 'currency must be an ISO 4217 code');
 
@@ -38,6 +46,7 @@ export const CreateProductSchema = z
     currency: Currency.default('MXN'),
     margin: zMoneyCents,
     checkout_base_url: CheckoutUrl,
+    image_url: ImageUrl.nullish().transform((v) => v ?? null),
     category: Category,
     status: z.enum(['active', 'paused']).default('active'),
   })
@@ -51,6 +60,7 @@ export const UpdateProductSchema = z
     price: zMoneyCents.optional(),
     margin: zMoneyCents.optional(),
     checkout_base_url: CheckoutUrl.optional(),
+    image_url: ImageUrl.nullable().optional(),
     category: Category.optional(),
     status: z.enum(['active', 'paused', 'archived']).optional(),
   })
@@ -117,6 +127,7 @@ export interface ProductDto {
   currency: string;
   margin: string;
   checkout_base_url: string;
+  image_url: string | null;
   category: string;
   escrow_days: number;
   status: string;
@@ -148,6 +159,7 @@ export const toProductDto = (p: Product): ProductDto => ({
   currency: p.currency,
   margin: p.margin,
   checkout_base_url: p.checkoutBaseUrl,
+  image_url: p.imageUrl,
   category: p.category,
   escrow_days: p.escrowDays,
   status: p.status,

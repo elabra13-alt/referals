@@ -92,6 +92,20 @@
       "when": 1793065459772,
       "tag": "0012_invitation_quotas",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793067051799,
+      "tag": "0013_invitation_magic_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793110344637,
+      "tag": "0014_product_images",
+      "breakpoints": true
     }
   ]
 }

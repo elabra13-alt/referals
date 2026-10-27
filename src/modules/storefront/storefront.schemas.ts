@@ -59,6 +59,7 @@ export interface StorefrontCreatorDto {
 export interface StorefrontProductDto {
   product_id: string;
   name: string;
+  image_url: string | null;
   price: string;
   currency: string;
   category: string;
@@ -78,6 +79,10 @@ export interface StorefrontItemDto {
   id: string;
   product_id: string;
   product_name: string;
+  product_image_url: string | null;
+  category: string;
+  /** The creator's own commission on this product (never shown to buyers). */
+  commission_rate: string;
   campaign_id: string;
   link_id: string;
   link_slug: string;

@@ -73,6 +73,8 @@ export const products = pgTable(
     currency: char('currency', { length: 3 }).notNull().default('MXN'),
     margin: numeric('margin', { precision: 12, scale: 2 }).notNull(),
     checkoutBaseUrl: text('checkout_base_url').notNull(),
+    /** Optional HTTPS URL of the product photo (storefront + invitation cards). */
+    imageUrl: text('image_url'),
     category: text('category').notNull(),
     escrowDays: integer('escrow_days').notNull().default(21),
     status: text('status').$type<ProductStatus>().notNull().default('active'),
@@ -387,6 +389,11 @@ export const campaignInvitations = pgTable(
     respondedAt: timestamp('responded_at', { withTimezone: true }),
     /** Last time this invitation was sent (first send or re-send); drives the seller's 24h quota. */
     sentAt: timestamp('sent_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * SHA-256 (hex) of the magic-link token in the creator's WhatsApp message. The raw
+     * token is never stored; a re-send rotates it (and invalidates older sessions).
+     */
+    magicTokenHash: varchar('magic_token_hash', { length: 64 }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

@@ -51,6 +51,11 @@ export class CreatorsRepository {
     return row;
   }
 
+  async findCreatorById(id: string): Promise<Creator | null> {
+    const [row] = await this.db.select().from(creators).where(eq(creators.id, id)).limit(1);
+    return row ?? null;
+  }
+
   async findCreatorBySlug(slug: string): Promise<Creator | null> {
     const [row] = await this.db.select().from(creators).where(eq(creators.slug, slug)).limit(1);
     return row ?? null;

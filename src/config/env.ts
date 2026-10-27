@@ -35,7 +35,7 @@ const EnvSchema = z.object({
   WHATSAPP_ACCESS_TOKEN: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
   WHATSAPP_PHONE_NUMBER_ID: z.preprocess((v) => (v === '' ? undefined : v), z.string().regex(/^\d+$/).optional()),
   WHATSAPP_API_VERSION: z.string().regex(/^v\d+\.\d+$/).default('v23.0'),
-  /** Creator-facing app; invitation links point to <CREATOR_APP_URL>/invitaciones/<id>. */
+  /** Origin serving creator pages; invitation links point to <CREATOR_APP_URL>/c/invitations/<id>?token=…. */
   CREATOR_APP_URL: z.preprocess((v) => (v === '' ? undefined : v), z.url().optional()),
   /** Shopify Admin GraphQL API version (Shopify retires versions after ~12 months). */
   SHOPIFY_API_VERSION: z.string().regex(/^\d{4}-\d{2}$/).default('2026-10'),

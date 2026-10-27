@@ -73,6 +73,7 @@ export class SellersService {
       currency: input.currency,
       margin: centsToDecimal(input.margin),
       checkoutBaseUrl: input.checkout_base_url,
+      imageUrl: input.image_url,
       category: input.category,
       escrowDays: escrowDaysForCategory(input.category),
       status: input.status,
@@ -111,6 +112,7 @@ export class SellersService {
     if (input.price !== undefined) patch.price = centsToDecimal(input.price);
     if (input.margin !== undefined) patch.margin = centsToDecimal(input.margin);
     if (input.checkout_base_url !== undefined) patch.checkoutBaseUrl = input.checkout_base_url;
+    if (input.image_url !== undefined) patch.imageUrl = input.image_url;
     if (input.category !== undefined) {
       patch.category = input.category;
       patch.escrowDays = escrowDaysForCategory(input.category);

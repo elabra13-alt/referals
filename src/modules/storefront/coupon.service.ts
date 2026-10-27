@@ -72,6 +72,7 @@ export class StorefrontService {
       products: rows.map((r) => ({
         product_id: r.item.productId,
         name: r.productName,
+        image_url: r.productImageUrl,
         price: r.price,
         currency: r.currency,
         category: r.category,
@@ -110,6 +111,9 @@ export class StorefrontService {
       id: row.item.id,
       product_id: row.item.productId,
       product_name: row.productName,
+      product_image_url: row.productImageUrl,
+      category: row.category,
+      commission_rate: row.commissionRate,
       campaign_id: row.item.campaignId,
       link_id: row.item.linkId,
       link_slug: row.linkSlug,

@@ -400,3 +400,21 @@ export function renderUnavailablePage(reason: keyof typeof UNAVAILABLE_COPY, opt
 <main><section class="card"><h1>${escapeHtml(copy.title)}</h1><p class="muted mt">${escapeHtml(copy.message)}</p></section></main>`,
   });
 }
+
+// ---------- Product thumbnail (photo, or initials badge) ----------
+
+export function productInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || 'R';
+}
+
+/**
+ * The product photo when an https URL is on file, otherwise a solid initials
+ * badge. Pages that use it must allow `img-src https:` in their CSP.
+ */
+export function renderProductThumb(name: string, imageUrl: string | null | undefined, opts: { className: string; size: number }): string {
+  if (imageUrl && /^https:\/\//i.test(imageUrl)) {
+    return `<img class="${opts.className}" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(name)}" width="${opts.size}" height="${opts.size}" loading="lazy" decoding="async" referrerpolicy="no-referrer">`;
+  }
+  return `<div class="${opts.className}" aria-hidden="true">${escapeHtml(productInitials(name))}</div>`;
+}

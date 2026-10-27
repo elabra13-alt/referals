@@ -5,6 +5,7 @@ import { estimatedCommission, storefrontUrl } from '../catalog/catalog.service.j
 import type { CampaignEnrollment } from '../catalog/enrollment.js';
 import type { HookSet, HooksGenerator } from '../catalog/hooks-generator.js';
 import type { CreatorsRepository } from '../creators/creators.repository.js';
+import { generateMagicToken, magicTokenMatches } from '../creators/magic-link.js';
 import { toLinkDto, type LinkDto } from '../creators/creators.schemas.js';
 import type { WhatsAppNotificationService } from '../notifications/whatsapp.service.js';
 import { escrowDaysForCategory } from '../webhooks/escrow.js';
@@ -59,7 +60,7 @@ export interface CreatorInvitationDto {
   /** False when the campaign, product or brand is no longer active. */
   can_accept: boolean;
   brand: { name: string };
-  product: { id: string; name: string; price: string; currency: string; category: string };
+  product: { id: string; name: string; image_url: string | null; price: string; currency: string; category: string };
   commission_rate: string;
   /** Creator commission on one sale at list price ($ MXN for MXN products). */
   estimated_earnings_per_sale: string;
@@ -71,6 +72,21 @@ export interface CreatorInvitationDto {
   expires_at: string;
   created_at: string;
 }
+
+/** A creator authenticated for one invitation through its magic link or session. */
+export interface MagicAccess {
+  row: InvitationDetailRow;
+  creator: Creator;
+}
+
+/** Everything the mobile invitation page renders. */
+export interface InvitationPageView {
+  invitation: CreatorInvitationDto;
+  /** Set once accepted: where the creator's link and storefront live. */
+  accepted: { link_url: string; storefront_url: string } | null;
+}
+
+const invalidMagicLink = () => new AppError(401, 'MAGIC_LINK_INVALID', 'This invitation link is not valid.');
 
 export interface AcceptResultDto {
   status: 'accepted' | 'already_accepted';
@@ -104,7 +120,7 @@ export class InvitationsService {
    * Tells the creator about a new (or re-sent) invitation over WhatsApp, in the
    * background: the invite request never waits on, or fails because of, WhatsApp.
    */
-  private notifyCreator(invitation: CampaignInvitation, creator: Creator): void {
+  private notifyCreator(invitation: CampaignInvitation, creator: Creator, magicToken: string): void {
     const whatsapp = this.deps.whatsapp;
     if (!whatsapp) return;
     whatsapp.dispatchInBackground(async () => {
@@ -114,6 +130,7 @@ export class InvitationsService {
         contact: { phone: creator.phone, whatsappOptInAt: creator.whatsappOptInAt },
         notice: {
           invitationId: invitation.id,
+          magicToken,
           creatorName: creator.name,
           brandName: row.brandName,
           productName: row.productName,
@@ -146,7 +163,10 @@ export class InvitationsService {
 
     const now = this.now();
     const match = this.deps.matchmaker.score(product, creator);
+    // Fresh per send: a re-send rotates the token, killing older links and sessions.
+    const magic = generateMagicToken();
     const values = {
+      magicTokenHash: magic.hash,
       matchScore: match.score,
       matchReason: matchReasonText(match),
       customNote: input.custom_note,
@@ -189,7 +209,7 @@ export class InvitationsService {
       throw err;
     }
 
-    this.notifyCreator(sent.invitation, creator); // after commit: never for a rolled-back send
+    this.notifyCreator(sent.invitation, creator, magic.token); // after commit: never for a rolled-back send
     return { ...this.toSellerDto(sent.invitation, creator), tags: matchTags(creator, match), quota: sent.quota };
   }
 
@@ -293,7 +313,7 @@ export class InvitationsService {
       status,
       can_accept: status === 'pending' && this.isOpen(row),
       brand: { name: row.brandName },
-      product: { id: row.productId, name: row.productName, price: row.price, currency: row.currency, category: row.category },
+      product: { id: row.productId, name: row.productName, image_url: row.productImageUrl, price: row.price, currency: row.currency, category: row.category },
       commission_rate: row.commissionRate,
       estimated_earnings_per_sale: estimatedCommission(row.price, row.commissionRate),
       escrow_days: escrowDaysForCategory(row.category),
@@ -357,6 +377,52 @@ export class InvitationsService {
       link: toLinkDto(enrolled.link, this.deps.publicLinkBaseUrl),
       storefront: { item_id: enrolled.storefrontItemId, url: storefrontUrl(this.deps.publicLinkBaseUrl, creator.slug) },
     };
+  }
+
+  // ---------- Magic link (mobile page) ----------
+
+  /**
+   * Verifies a magic-link token. Unknown invitation, wrong token and inactive
+   * creator are indistinguishable (401); a valid token past the invitation's
+   * window is 410.
+   */
+  async openMagicLink(invitationId: string, token: string): Promise<MagicAccess> {
+    const row = await this.deps.repo.findDetail(invitationId);
+    if (!row || !magicTokenMatches(token, row.invitation.magicTokenHash)) throw invalidMagicLink();
+    const access = await this.withActiveCreator(row);
+    if (!access) throw invalidMagicLink();
+    if (row.invitation.expiresAt.getTime() <= this.now().getTime()) {
+      throw new AppError(410, 'MAGIC_LINK_EXPIRED', 'This invitation link has expired.');
+    }
+    return access;
+  }
+
+  /** The invitation and its (active) creator, for checking a session cookie against. */
+  async sessionSubject(invitationId: string): Promise<MagicAccess | null> {
+    const row = await this.deps.repo.findDetail(invitationId);
+    return row ? this.withActiveCreator(row) : null;
+  }
+
+  private async withActiveCreator(row: InvitationDetailRow): Promise<MagicAccess | null> {
+    const creator = await this.deps.creatorsRepo.findCreatorById(row.invitation.creatorId);
+    return creator && creator.status === 'active' ? { row, creator } : null;
+  }
+
+  async pageView(creator: Creator, invitationId: string): Promise<InvitationPageView> {
+    const row = await this.deps.repo.findForCreator(invitationId, creator.id);
+    if (!row) throw notFound();
+    const invitation = this.toCreatorDto(row, creator);
+    let accepted: InvitationPageView['accepted'] = null;
+    if (invitation.status === 'accepted') {
+      const link = await this.deps.creatorsRepo.findLinkForCreator(row.invitation.campaignId, creator.id);
+      if (link) {
+        accepted = {
+          link_url: toLinkDto(link, this.deps.publicLinkBaseUrl).url,
+          storefront_url: storefrontUrl(this.deps.publicLinkBaseUrl, creator.slug),
+        };
+      }
+    }
+    return { invitation, accepted };
   }
 
   async decline(creator: Creator, invitationId: string): Promise<CreatorInvitationDto> {

@@ -19,6 +19,7 @@ export interface InvitationDetailRow {
   commissionRate: string;
   productId: string;
   productName: string;
+  productImageUrl: string | null;
   productStatus: string;
   price: string;
   currency: string;
@@ -33,6 +34,7 @@ const detailColumns = {
   commissionRate: campaigns.commissionRate,
   productId: products.id,
   productName: products.name,
+  productImageUrl: products.imageUrl,
   productStatus: products.status,
   price: products.price,
   currency: products.currency,
@@ -108,7 +110,7 @@ export class InvitationsRepository {
   /** Re-sends an expired invitation (same row: one invitation per campaign + creator). */
   async reopen(
     id: string,
-    values: Pick<NewInvitation, 'matchScore' | 'matchReason' | 'customNote' | 'expiresAt' | 'sentAt'>,
+    values: Pick<NewInvitation, 'matchScore' | 'matchReason' | 'customNote' | 'expiresAt' | 'sentAt' | 'magicTokenHash'>,
   ): Promise<CampaignInvitation> {
     const [row] = await this.db
       .update(campaignInvitations)
@@ -148,6 +150,12 @@ export class InvitationsRepository {
     return this.details()
       .where(eq(campaignInvitations.creatorId, creatorId))
       .orderBy(desc(campaignInvitations.createdAt), desc(campaignInvitations.id));
+  }
+
+  /** Unscoped lookup for the magic-link page; callers must authenticate against the row's token/creator. */
+  async findDetail(invitationId: string): Promise<InvitationDetailRow | null> {
+    const [row] = await this.details().where(eq(campaignInvitations.id, invitationId)).limit(1);
+    return row ?? null;
   }
 
   /** Scoped to the creator: another creator's invitation is indistinguishable from a missing one. */

@@ -12,6 +12,8 @@ export interface StorefrontItemRow {
   campaignStatus: string;
   productStatus: string;
   productName: string;
+  productImageUrl: string | null;
+  commissionRate: string;
   price: string;
   currency: string;
   category: string;
@@ -27,6 +29,8 @@ const itemColumns = {
   campaignStatus: campaigns.status,
   productStatus: products.status,
   productName: products.name,
+  productImageUrl: products.imageUrl,
+  commissionRate: campaigns.commissionRate,
   price: products.price,
   currency: products.currency,
   category: products.category,

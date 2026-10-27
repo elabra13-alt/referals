@@ -196,8 +196,8 @@ describe('creator storefront & instant coupons', () => {
           is_verified: true,
         },
         products: [
-          { product_id: b.productId, name: 'Producto B', price: '499.00', currency: 'MXN', category: 'beauty', hook: 'Lo amo', is_featured: true, link_slug: 'leo-b' },
-          { product_id: a.productId, name: 'Producto A', price: '499.00', currency: 'MXN', category: 'beauty', hook: null, is_featured: false, link_slug: 'leo-a' },
+          { product_id: b.productId, name: 'Producto B', image_url: null, price: '499.00', currency: 'MXN', category: 'beauty', hook: 'Lo amo', is_featured: true, link_slug: 'leo-b' },
+          { product_id: a.productId, name: 'Producto A', image_url: null, price: '499.00', currency: 'MXN', category: 'beauty', hook: null, is_featured: false, link_slug: 'leo-a' },
         ],
       });
     });

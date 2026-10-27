@@ -4,6 +4,7 @@ import {
   escapeHtml,
   formatPrice,
   renderBrandLogo,
+  renderProductThumb,
   safeJsonForHtml,
 } from '../links/landing-template.js';
 import type { StorefrontDto } from './storefront.schemas.js';
@@ -92,6 +93,9 @@ h1{font-size:24px;line-height:30px;letter-spacing:-.015em}
 .products{list-style:none;display:flex;flex-direction:column;gap:12px}
 .product{display:flex;flex-direction:column;gap:8px}
 .product.featured{border:2px solid var(--onyx)}
+/* Square photo, or a solid Berry initials badge when the product has none */
+.product-photo{display:grid;place-items:center;width:100%;height:auto;aspect-ratio:1/1;object-fit:cover;border-radius:8px;
+  border:1px solid var(--line);background:var(--berry);color:#FFFFFF;font-family:var(--font-display);font-weight:800;font-size:40px}
 .product-tags{display:flex;gap:6px;flex-wrap:wrap}
 .product h3{font-size:18px;line-height:24px;letter-spacing:-.005em}
 .price{font-family:var(--font-display);font-size:26px;line-height:30px;font-weight:800;color:var(--onyx);letter-spacing:-.02em}
@@ -259,6 +263,7 @@ export function renderStorefrontPage(storefront: StorefrontDto, opts: { nonce: s
     .map(
       (p, i) => `
     <li class="card product${p.is_featured ? ' featured' : ''}">
+      ${renderProductThumb(p.name, p.image_url, { className: 'product-photo', size: 528 })}
       <div class="product-tags">${p.is_featured ? '<span class="pill pill-featured">Destacado</span>' : ''}<span class="pill pill-cat">${escapeHtml(categoryLabel(p.category))}</span></div>
       <h3>${escapeHtml(p.name)}</h3>
       <p class="price num">${escapeHtml(formatPrice(p.price, p.currency))}</p>

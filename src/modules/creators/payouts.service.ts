@@ -122,10 +122,19 @@ export class PayoutsService {
     };
   }
 
-  async updateProfile(creator: Creator, input: { clabe: string; legal_name: string; rfc: string | null }): Promise<PayoutProfileDto> {
+  /**
+   * `holdNewAccount`: also start the cooling-off on a first registration. Used when the
+   * caller authenticated with a weaker factor (a WhatsApp magic link) than the API key.
+   */
+  async updateProfile(
+    creator: Creator,
+    input: { clabe: string; legal_name: string; rfc: string | null },
+    opts: { holdNewAccount?: boolean } = {},
+  ): Promise<PayoutProfileDto> {
     const patch: CreatorPatch = { speiClabe: input.clabe, payoutLegalName: input.legal_name, rfc: input.rfc };
-    // First registration is immediate; replacing an existing account starts the cooling-off.
-    if (creator.speiClabe && creator.speiClabe !== input.clabe) patch.speiClabeChangedAt = this.now();
+    // First registration is immediate (unless held); replacing an existing account starts the cooling-off.
+    const replaced = Boolean(creator.speiClabe && creator.speiClabe !== input.clabe);
+    if (replaced || (opts.holdNewAccount && !creator.speiClabe)) patch.speiClabeChangedAt = this.now();
     return this.toProfileDto(await this.deps.creatorsRepo.updateCreator(creator.id, patch));
   }
 

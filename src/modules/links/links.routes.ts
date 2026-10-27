@@ -20,7 +20,7 @@ function parseSlug(params: unknown): string | null {
 }
 
 /** Locked-down headers for the buyer HTML: only our own nonce'd inline script/style may run. */
-export function setPageHeaders(reply: FastifyReply, nonce: string, opts: { imgSrc?: string } = {}): void {
+export function setPageHeaders(reply: FastifyReply, nonce: string, opts: { imgSrc?: string; formAction?: string } = {}): void {
   reply
     .header('Content-Type', 'text/html; charset=utf-8')
     .header(
@@ -32,7 +32,7 @@ export function setPageHeaders(reply: FastifyReply, nonce: string, opts: { imgSr
         "connect-src 'self'",
         `img-src ${opts.imgSrc ?? "'self' data:"}`,
         "base-uri 'none'",
-        "form-action 'none'",
+        `form-action ${opts.formAction ?? "'none'"}`,
         "frame-ancestors 'none'",
       ].join('; '),
     )

@@ -38,6 +38,9 @@ import { InvitationsRepository } from './modules/matchmaker/invitations.reposito
 import { InvitationsService } from './modules/matchmaker/invitations.service.js';
 import { registerMatchmakerRoutes } from './modules/matchmaker/matchmaker.routes.js';
 import { MatchmakerService } from './modules/matchmaker/matchmaker.service.js';
+import { registerInvitationUiRoutes } from './modules/creators/invitations-ui.routes.js';
+import { MagicSessions } from './modules/creators/magic-link.js';
+import { registerPortalUiRoutes } from './modules/creators/portal-ui.routes.js';
 import { registerPayoutRoutes } from './modules/creators/payouts.routes.js';
 import { PayoutsService } from './modules/creators/payouts.service.js';
 import {
@@ -67,7 +70,7 @@ export interface AppDeps {
   /** Overrides the WhatsApp transport (tests use InMemoryWhatsAppOutbox). */
   whatsappProvider?: WhatsAppProvider;
   whatsapp?: { accessToken: string; phoneNumberId: string; apiVersion?: string } | undefined;
-  /** Creator app base URL for invitation links; defaults to <link domain>/creadores. */
+  /** Origin serving the creator invitation pages (/c/invitations/:id); defaults to the link domain's origin. */
   creatorAppUrl?: string | undefined;
   /** Shopify Admin API client; defaults to the real HTTP client. */
   shopifyClient?: ShopifyClient;
@@ -175,31 +178,28 @@ export function buildApp(deps: AppDeps, fastifyOptions: FastifyServerOptions = {
     matching,
     ...(deps.now ? { now: deps.now } : {}),
   });
-  registerMatchmakerRoutes(app, {
-    matchmaker,
-    invitations: new InvitationsService({
-      db: deps.db,
-      whatsapp: new WhatsAppNotificationService({
-        provider:
-          deps.whatsappProvider ??
-          (deps.whatsapp ? new MetaCloudWhatsAppProvider(deps.whatsapp) : new LoggingWhatsAppProvider(app.log)),
-        log: app.log,
-        invitationReviewBaseUrl: `${(deps.creatorAppUrl ?? `${new URL(publicLinkBaseUrl).origin}/creadores`).replace(/\/+$/, '')}/invitaciones`,
-      }),
-      repo: invitationsRepo,
-      matchmaker,
-      creatorsRepo,
-      enrollment,
-      hooks,
-      publicLinkBaseUrl,
+  const invitations = new InvitationsService({
+    db: deps.db,
+    whatsapp: new WhatsAppNotificationService({
+      provider:
+        deps.whatsappProvider ??
+        (deps.whatsapp ? new MetaCloudWhatsAppProvider(deps.whatsapp) : new LoggingWhatsAppProvider(app.log)),
+      log: app.log,
+      invitationReviewBaseUrl: `${(deps.creatorAppUrl ?? new URL(publicLinkBaseUrl).origin).replace(/\/+$/, '')}/c/invitations`,
     }),
-    sellersRepo,
+    repo: invitationsRepo,
+    matchmaker,
     creatorsRepo,
+    enrollment,
+    hooks,
+    publicLinkBaseUrl,
   });
-  registerPayoutRoutes(app, {
-    service: new PayoutsService({ db: deps.db, creatorsRepo, ...(deps.now ? { now: deps.now } : {}) }),
-    creatorsRepo,
-  });
+  registerMatchmakerRoutes(app, { matchmaker, invitations, sellersRepo, creatorsRepo });
+  // Session signing key is HKDF-derived from the master key, never the key itself.
+  const sessions = new MagicSessions(deps.webhookEncryptionKey);
+  registerInvitationUiRoutes(app, { invitations, sessions, ...(deps.now ? { now: deps.now } : {}) });
+  const payouts = new PayoutsService({ db: deps.db, creatorsRepo, ...(deps.now ? { now: deps.now } : {}) });
+  registerPayoutRoutes(app, { service: payouts, creatorsRepo });
   registerCatalogRoutes(app, {
     service: new CatalogService({
       repo: new CatalogRepository(deps.db),
@@ -209,14 +209,21 @@ export function buildApp(deps: AppDeps, fastifyOptions: FastifyServerOptions = {
     }),
     creatorsRepo,
   });
-  registerStorefrontRoutes(app, {
-    service: new StorefrontService({
-      repo: new StorefrontRepository(deps.db),
-      issuance,
-      ...(deps.now ? { now: deps.now } : {}),
-    }),
-    shield,
+  const storefront = new StorefrontService({
+    repo: new StorefrontRepository(deps.db),
+    issuance,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
+  registerStorefrontRoutes(app, { service: storefront, shield, creatorsRepo });
+  registerPortalUiRoutes(app, {
     creatorsRepo,
+    payouts,
+    storefront,
+    invitations,
+    hooks,
+    sessions,
+    publicLinkBaseUrl,
+    ...(deps.now ? { now: deps.now } : {}),
   });
   registerSellerRoutes(app, { repo: sellersRepo, service: sellersService, adminApiToken: deps.adminApiToken });
   registerCreatorRoutes(app, { service: creatorsService, repo: creatorsRepo, sellersRepo, adminApiToken: deps.adminApiToken });

@@ -125,6 +125,8 @@ export function formatExpiry(date: Date): string {
 
 export interface InvitationNotice {
   invitationId: string;
+  /** Raw magic-link token (only ever in the message itself, never logged). */
+  magicToken?: string;
   creatorName: string;
   brandName: string;
   productName: string;
@@ -177,13 +179,14 @@ export class WhatsAppNotificationService {
     private readonly deps: {
       provider: WhatsAppProvider;
       log: Pick<FastifyBaseLogger, 'info' | 'warn' | 'error'>;
-      /** Base for the creator's "review & accept" page; the invitation id is appended. */
+      /** Base for the creator's "review & accept" page; the invitation id (and magic token) is appended. */
       invitationReviewBaseUrl: string;
     },
   ) {}
 
-  reviewUrl(invitationId: string): string {
-    return `${this.deps.invitationReviewBaseUrl.replace(/\/+$/, '')}/${encodeURIComponent(invitationId)}`;
+  reviewUrl(invitationId: string, magicToken?: string): string {
+    const url = `${this.deps.invitationReviewBaseUrl.replace(/\/+$/, '')}/${encodeURIComponent(invitationId)}`;
+    return magicToken ? `${url}?token=${encodeURIComponent(magicToken)}` : url;
   }
 
   /** Sends (or skips) the invitation notice. Never throws: failures are returned and logged. */
@@ -192,7 +195,7 @@ export class WhatsAppNotificationService {
     if (!isE164(contact.phone)) return { status: 'skipped', reason: 'invalid_phone' };
     if (!contact.whatsappOptInAt) return { status: 'skipped', reason: 'not_opted_in' };
 
-    const message = buildInvitationMessage(contact.phone, notice, this.reviewUrl(notice.invitationId));
+    const message = buildInvitationMessage(contact.phone, notice, this.reviewUrl(notice.invitationId, notice.magicToken));
     try {
       const { id } = await this.deps.provider.send(message);
       this.deps.log.info({ invitationId: notice.invitationId, to: maskPhone(contact.phone), messageId: id }, 'invitation whatsapp sent');

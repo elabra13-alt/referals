@@ -150,7 +150,7 @@ describe('campaign invitations → WhatsApp', () => {
           'Alice Beauty',
           'Glow Serum',
           '$97.35 MXN', // 15% of 649.00
-          `https://referals.mx/creadores/invitaciones/${invitationId}`,
+          expect.stringMatching(new RegExp(`^https://referals\\.mx/c/invitations/${invitationId}\\?token=[A-Za-z0-9_-]{43}$`)),
           '2 de noviembre',
         ],
       });
@@ -219,7 +219,7 @@ describe('campaign invitations → WhatsApp', () => {
       await patchMe(leo, { phone: PHONE, whatsapp_opt_in: true });
       const invitationId = (await invite()).json().id;
       await vi.waitFor(() => expect(outbox.messages).toHaveLength(1));
-      expect(outbox.messages[0]!.parameters[4]).toBe(`https://app.referrals.mx/invitaciones/${invitationId}`);
+      expect(outbox.messages[0]!.parameters[4]!.startsWith(`https://app.referrals.mx/c/invitations/${invitationId}?token=`)).toBe(true);
     });
   });
 });

@@ -162,6 +162,26 @@ export function buildInvitationMessage(to: string, notice: InvitationNotice, rev
   };
 }
 
+export const LOGIN_TEMPLATE = { name: 'portal_login', language: 'es_MX' } as const;
+
+/**
+ * Template `portal_login` (es_MX), body:
+ *   Tu enlace de acceso seguro a Referals: {{1}} (válido por 15 minutos).
+ *   Si no lo solicitaste, puedes ignorar este mensaje.
+ */
+export function buildLoginMessage(to: string, loginUrl: string): WhatsAppTemplateMessage {
+  const parameters = [templateParam(loginUrl, 300)];
+  return {
+    to,
+    template: LOGIN_TEMPLATE.name,
+    language: LOGIN_TEMPLATE.language,
+    parameters,
+    previewText:
+      `Tu enlace de acceso seguro a Referals: ${parameters[0]} (válido por 15 minutos). ` +
+      'Si no lo solicitaste, puedes ignorar este mensaje.',
+  };
+}
+
 // ---------- Dispatcher ----------
 
 export type NotifyResult =
@@ -202,6 +222,22 @@ export class WhatsAppNotificationService {
       return { status: 'sent', messageId: id };
     } catch (err) {
       this.deps.log.error({ invitationId: notice.invitationId, to: maskPhone(contact.phone), error: (err as Error).message }, 'invitation whatsapp failed');
+      return { status: 'failed', error: (err as Error).message };
+    }
+  }
+
+  /** Sends (or skips) a portal login link. Never throws; the URL (a live credential) is never logged. */
+  async sendLoginNotification(contact: CreatorContact, loginUrl: string): Promise<NotifyResult> {
+    if (!contact.phone) return { status: 'skipped', reason: 'no_phone' };
+    if (!isE164(contact.phone)) return { status: 'skipped', reason: 'invalid_phone' };
+    if (!contact.whatsappOptInAt) return { status: 'skipped', reason: 'not_opted_in' };
+
+    try {
+      const { id } = await this.deps.provider.send(buildLoginMessage(contact.phone, loginUrl));
+      this.deps.log.info({ to: maskPhone(contact.phone), messageId: id }, 'portal login whatsapp sent');
+      return { status: 'sent', messageId: id };
+    } catch (err) {
+      this.deps.log.error({ to: maskPhone(contact.phone), error: (err as Error).message }, 'portal login whatsapp failed');
       return { status: 'failed', error: (err as Error).message };
     }
   }

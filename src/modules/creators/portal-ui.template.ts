@@ -127,7 +127,7 @@ h3{font-size:17px;line-height:22px}
 /* Forms & buttons: 48px+ targets */
 form{display:flex;flex-direction:column;gap:10px}
 label{font-size:14px;font-weight:700;color:var(--onyx)}
-input[type=text]{width:100%;min-height:48px;font-size:17px;padding:0 14px;border:1px solid var(--onyx);border-radius:8px;
+input[type=text],input[type=tel]{width:100%;min-height:48px;font-size:17px;padding:0 14px;border:1px solid var(--onyx);border-radius:8px;
   background:var(--surface);color:var(--onyx)}
 input:focus{outline:3px solid var(--cyan);outline-offset:1px}
 .field-hint{font-size:13px;color:var(--muted);min-height:1em}
@@ -253,7 +253,7 @@ function flashHtml(flash: Flash | null): string {
   return `<p class="flash flash-${flash.kind}" role="${flash.kind === 'error' ? 'alert' : 'status'}">${escapeHtml(flash.message)}</p>`;
 }
 
-function shell(opts: { title: string; nonce: string; active: PortalTab | null; body: string; copies?: Record<string, string> }): string {
+export function renderPortalShell(opts: { title: string; nonce: string; active: PortalTab | null; body: string; copies?: Record<string, string> }): string {
   return `<!doctype html>
 <html lang="es-MX">
 <head>
@@ -387,7 +387,7 @@ export function renderWalletPage(view: WalletView, opts: { nonce: string }): str
   </section>
 </main>`;
 
-  return shell({ title: 'Mi Billetera | Referrals', nonce: opts.nonce, active: 'wallet', body });
+  return renderPortalShell({ title: 'Mi Billetera | Referrals', nonce: opts.nonce, active: 'wallet', body });
 }
 
 // ---------- Mi Vitrina ----------
@@ -467,7 +467,7 @@ export function renderStorefrontManagePage(view: StorefrontManageView, opts: { n
   }
 </main>`;
 
-  return shell({ title: 'Mi Vitrina | Referrals', nonce: opts.nonce, active: 'storefront', body, copies });
+  return renderPortalShell({ title: 'Mi Vitrina | Referrals', nonce: opts.nonce, active: 'storefront', body, copies });
 }
 
 // ---------- Invitaciones ----------
@@ -503,15 +503,15 @@ export function renderInvitationsInboxPage(view: { invitations: CreatorInvitatio
       : '<section class="card empty"><p class="muted">Aún no tienes invitaciones. Te avisaremos por WhatsApp cuando una marca te invite.</p></section>'
   }
 </main>`;
-  return shell({ title: 'Invitaciones | Referrals', nonce: opts.nonce, active: 'invitations', body });
+  return renderPortalShell({ title: 'Invitaciones | Referrals', nonce: opts.nonce, active: 'invitations', body });
 }
 
 export function renderPortalSignedOutPage(opts: { nonce: string }): string {
-  return shell({
+  return renderPortalShell({
     title: 'Entra desde WhatsApp | Referrals',
     nonce: opts.nonce,
     active: null,
     body: `
-<main><section class="card"><h1>Abre tu portal desde WhatsApp</h1><p class="muted">Por seguridad, entra con el enlace de tu último mensaje de invitación de Referrals. Tu sesión dura 24 horas.</p></section></main>`,
+<main><section class="card vanity"><h1>Abre tu portal desde WhatsApp</h1><p class="muted">Por seguridad, entra con un enlace que te enviamos por WhatsApp. Tu sesión dura 24 horas.</p><a class="btn btn-dark" href="/c/login">Recibir enlace de acceso</a></section></main>`,
   });
 }

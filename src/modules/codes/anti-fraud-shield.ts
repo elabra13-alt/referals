@@ -33,7 +33,7 @@ export const DISPOSABLE_EMAIL_DOMAINS: ReadonlySet<string> = new Set([
  * Atomic so concurrent requests from one IP can't overshoot the limit.
  * Returns {allowed, remaining, retryAfterMs}.
  */
-const SLIDING_WINDOW_LUA = `
+export const SLIDING_WINDOW_LUA = `
 local key = KEYS[1]
 local now = tonumber(ARGV[1])
 local window = tonumber(ARGV[2])

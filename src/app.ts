@@ -40,6 +40,8 @@ import { registerMatchmakerRoutes } from './modules/matchmaker/matchmaker.routes
 import { MatchmakerService } from './modules/matchmaker/matchmaker.service.js';
 import { registerInvitationUiRoutes } from './modules/creators/invitations-ui.routes.js';
 import { MagicSessions } from './modules/creators/magic-link.js';
+import { registerPortalAuthRoutes } from './modules/creators/portal-auth.routes.js';
+import { PortalAuthService } from './modules/creators/portal-auth.service.js';
 import { registerPortalUiRoutes } from './modules/creators/portal-ui.routes.js';
 import { registerPayoutRoutes } from './modules/creators/payouts.routes.js';
 import { PayoutsService } from './modules/creators/payouts.service.js';
@@ -178,15 +180,18 @@ export function buildApp(deps: AppDeps, fastifyOptions: FastifyServerOptions = {
     matching,
     ...(deps.now ? { now: deps.now } : {}),
   });
+  // Origin serving the creator pages (/c/invitations, /c/login and the portal).
+  const creatorAppOrigin = (deps.creatorAppUrl ?? new URL(publicLinkBaseUrl).origin).replace(/\/+$/, '');
+  const whatsapp = new WhatsAppNotificationService({
+    provider:
+      deps.whatsappProvider ??
+      (deps.whatsapp ? new MetaCloudWhatsAppProvider(deps.whatsapp) : new LoggingWhatsAppProvider(app.log)),
+    log: app.log,
+    invitationReviewBaseUrl: `${creatorAppOrigin}/c/invitations`,
+  });
   const invitations = new InvitationsService({
     db: deps.db,
-    whatsapp: new WhatsAppNotificationService({
-      provider:
-        deps.whatsappProvider ??
-        (deps.whatsapp ? new MetaCloudWhatsAppProvider(deps.whatsapp) : new LoggingWhatsAppProvider(app.log)),
-      log: app.log,
-      invitationReviewBaseUrl: `${(deps.creatorAppUrl ?? new URL(publicLinkBaseUrl).origin).replace(/\/+$/, '')}/c/invitations`,
-    }),
+    whatsapp,
     repo: invitationsRepo,
     matchmaker,
     creatorsRepo,
@@ -223,6 +228,19 @@ export function buildApp(deps: AppDeps, fastifyOptions: FastifyServerOptions = {
     hooks,
     sessions,
     publicLinkBaseUrl,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
+  registerPortalAuthRoutes(app, {
+    auth: new PortalAuthService({
+      db: deps.db,
+      redis: deps.redis,
+      whatsapp,
+      loginVerifyUrl: `${creatorAppOrigin}/c/login/verify`,
+      log: app.log,
+      ...(deps.now ? { now: deps.now } : {}),
+    }),
+    creatorsRepo,
+    sessions,
     ...(deps.now ? { now: deps.now } : {}),
   });
   registerSellerRoutes(app, { repo: sellersRepo, service: sellersService, adminApiToken: deps.adminApiToken });

@@ -455,6 +455,30 @@ export const withdrawalRequests = pgTable(
 );
 
 export type WithdrawalRequest = typeof withdrawalRequests.$inferSelect;
+
+/**
+ * Single-use, 15-minute portal login links sent by WhatsApp (/c/login). Only the
+ * SHA-256 (hex) of the raw token is stored; `used_at` is set atomically on first use.
+ */
+export const creatorLoginTokens = pgTable(
+  'creator_login_tokens',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    creatorId: uuid('creator_id')
+      .notNull()
+      .references(() => creators.id, { onDelete: 'cascade' }),
+    tokenHash: varchar('token_hash', { length: 64 }).notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('creator_login_token_hash_idx').on(t.tokenHash),
+    index('creator_login_creator_id_idx').on(t.creatorId),
+  ],
+);
+
+export type CreatorLoginToken = typeof creatorLoginTokens.$inferSelect;
 export type Seller = typeof sellers.$inferSelect;
 export type Sale = typeof sales.$inferSelect;
 export type Payout = typeof payouts.$inferSelect;

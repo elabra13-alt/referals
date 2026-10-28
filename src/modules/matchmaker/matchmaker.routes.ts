@@ -14,7 +14,7 @@ import type { MatchmakerService } from './matchmaker.service.js';
 const CampaignIdParams = z.object({ id: z.uuid() });
 const InvitationIdParams = z.object({ id: z.uuid() });
 
-const CreateInvitationSchema = z
+export const CreateInvitationSchema = z
   .object({
     creator_slug: z
       .string()

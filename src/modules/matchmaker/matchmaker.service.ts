@@ -88,6 +88,16 @@ export class MatchmakerService {
   }
 
   async rankCreators(sellerId: string, campaignId: string, query: MatchesQuery): Promise<{ campaign_id: string; data: MatchmakerDto[] }> {
+    const { campaign, entries } = await this.rankWithCreators(sellerId, campaignId, query);
+    return { campaign_id: campaign.id, data: entries.map((e) => e.match) };
+  }
+
+  /** Same ranking, keeping each creator row alongside its DTO (the seller dashboard renders public profile fields). */
+  async rankWithCreators(
+    sellerId: string,
+    campaignId: string,
+    query: MatchesQuery,
+  ): Promise<{ campaign: Campaign; product: Product; entries: { creator: Creator; match: MatchmakerDto }[] }> {
     const { campaign, product } = await this.loadOwnedCampaign(sellerId, campaignId);
     const [candidates, linked, invitations] = await Promise.all([
       this.deps.creatorsRepo.listMatchCandidates({ niche: query.niche }),
@@ -97,17 +107,21 @@ export class MatchmakerService {
     const now = this.now();
     const ranked = this.deps.matching.rank(product.category, candidates).slice(0, query.limit);
     return {
-      campaign_id: campaign.id,
-      data: ranked.map((c) => {
+      campaign,
+      product,
+      entries: ranked.map((c) => {
         const inv = invitations.get(c.id);
         return {
-          creator: toCreatorPublicDto(c),
-          score: c.match.score,
-          breakdown: c.match.breakdown,
-          reasons: c.match.reasons,
-          tags: matchTags(c, c.match),
-          already_linked: linked.has(c.id),
-          invitation: inv ? { id: inv.id, status: effectiveStatus(inv, now), expires_at: inv.expiresAt.toISOString() } : null,
+          creator: c,
+          match: {
+            creator: toCreatorPublicDto(c),
+            score: c.match.score,
+            breakdown: c.match.breakdown,
+            reasons: c.match.reasons,
+            tags: matchTags(c, c.match),
+            already_linked: linked.has(c.id),
+            invitation: inv ? { id: inv.id, status: effectiveStatus(inv, now), expires_at: inv.expiresAt.toISOString() } : null,
+          },
         };
       }),
     };

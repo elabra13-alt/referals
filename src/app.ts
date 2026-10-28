@@ -13,6 +13,9 @@ import { OrdersRepository } from './modules/webhooks/orders.repository.js';
 import { registerWebhookRoutes } from './modules/webhooks/webhooks.routes.js';
 import { SellersRepository } from './modules/sellers/sellers.repository.js';
 import { registerSellerRoutes } from './modules/sellers/sellers.routes.js';
+import { SellerDashboardService } from './modules/sellers/seller-dashboard.service.js';
+import { SellerSessions } from './modules/sellers/seller-session.js';
+import { registerSellerUiRoutes } from './modules/sellers/seller-ui.routes.js';
 import { SellersService } from './modules/sellers/sellers.service.js';
 import { CreatorsRepository } from './modules/creators/creators.repository.js';
 import { registerCreatorRoutes } from './modules/creators/creators.routes.js';
@@ -244,6 +247,17 @@ export function buildApp(deps: AppDeps, fastifyOptions: FastifyServerOptions = {
     ...(deps.now ? { now: deps.now } : {}),
   });
   registerSellerRoutes(app, { repo: sellersRepo, service: sellersService, adminApiToken: deps.adminApiToken });
+  registerSellerUiRoutes(app, {
+    sellersRepo,
+    sellersService,
+    dashboard: new SellerDashboardService(deps.db),
+    matchmaker,
+    invitations,
+    sessions: new SellerSessions(deps.webhookEncryptionKey),
+    redis: deps.redis,
+    adminApiToken: deps.adminApiToken,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
   registerCreatorRoutes(app, { service: creatorsService, repo: creatorsRepo, sellersRepo, adminApiToken: deps.adminApiToken });
   registerShopifyRoutes(app, { service: shopifyService, sellersRepo });
   registerWebhookRoutes(app, { repo: ordersRepo, service: orderWebhooks, encryptionKey: deps.webhookEncryptionKey });
